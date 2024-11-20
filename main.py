@@ -41,18 +41,23 @@ print(decode(encode("hii there")))
 half_embedding_dim = 8
 embedding_dim = 2 * half_embedding_dim
 vocab_size = len(vocab) + 1
+max_pos = 1024
 
 
-class PositionalEncoding(nn.Module):
-    def __init__(self, max_pos=1024):
-        self.max_pos = max_pos
+class PositionalEmbedding(nn.Module):
+    def __init__(self):
+        super(PositionalEmbedding, self).__init__()
 
-        pos_matrix = torch.arange(max_pos).repeat(half_embedding_dim)
+        pos_matrix = torch.arange(max_pos).view(
+            max_pos, -1).repeat(1, half_embedding_dim)
+
+        print("pos_matrix")
+        print(pos_matrix.size())
 
         base = 10000
 
         index_exponent_matrix = (
-            2.0 * torch.arange(half_embedding_dim).view(-1, 1).repeat(1, max_pos)) / embedding_dim
+            2.0 * torch.arange(half_embedding_dim).repeat(max_pos, 1)) / embedding_dim
 
         index_matrix = torch.pow(base, index_exponent_matrix)
 
@@ -61,15 +66,15 @@ class PositionalEncoding(nn.Module):
         weights[:, 0::2] = torch.sin(pos_matrix * index_matrix)
         weights[:, 1::2] = torch.cos(pos_matrix * index_matrix)
 
-        self.pos_embedding = nn.Embedding.from_petrained(weights)
+        self.pos_embedding = nn.Embedding.from_pretrained(weights)
 
     def forward(self, input):
-        if len(input) > self.max_pos:
+        if len(input) > max_pos:
             raise Exception("size > max_pos")
 
         positions = torch.arange(len(input))
 
-        self.pos_embedding.forward(positions)
+        return self.pos_embedding(positions)
 
 
 class MyDecoderModule(nn.Module):
@@ -77,21 +82,37 @@ class MyDecoderModule(nn.Module):
     def __init__(self):
         super(MyDecoderModule, self).__init__()
 
-        self.embedding = nn.Embedding(
+        self.token_embedding = nn.Embedding(
             num_embeddings=vocab_size,
             embedding_dim=embedding_dim
         )
 
-        self.linear1 = torch.nn.Linear(100, 200)
-        self.activation = torch.nn.ReLU()
-        self.linear2 = torch.nn.Linear(200, 10)
-        self.softmax = torch.nn.Softmax()
+        self.pos_embedding = PositionalEmbedding()
 
-    def forward(self, encoded, decoded):
-        encoded_embedded = self.embedding(encoded)
+        # self.linear1 = torch.nn.Linear(100, 200)
+        # self.activation = torch.nn.ReLU()
+        # self.linear2 = torch.nn.Linear(200, 10)
+        # self.softmax = torch.nn.Softmax()
 
-        x = self.linear1(x)
-        x = self.activation(x)
-        x = self.linear2(x)
-        x = self.softmax(x)
-        return x
+    def forward(self, encoded):  # , decoded):
+        encoded_token_embedded = self.token_embedding(encoded)
+        encoded_pos_embedded = self.pos_embedding(encoded)
+
+        encoded_embedded = encoded_token_embedded + encoded_pos_embedded
+
+        return encoded_embedded
+
+        # x = self.linear1(x)
+        # x = self.activation(x)
+        # x = self.linear2(x)
+        # x = self.softmax(x)
+
+
+encoded = torch.tensor(encode("hii there"))
+print(encoded)
+
+myDecoderModule = MyDecoderModule()
+
+afterForward = myDecoderModule(encoded)
+print(afterForward)
+print(afterForward.size())
