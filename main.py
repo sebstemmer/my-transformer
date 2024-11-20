@@ -44,7 +44,9 @@ vocab_size = len(vocab) + 1
 
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, embedding_dim, max_pos=1024):
+    def __init__(self, max_pos=1024):
+        self.max_pos = max_pos
+
         pos_matrix = torch.arange(max_pos).repeat(half_embedding_dim)
 
         base = 10000
@@ -54,12 +56,20 @@ class PositionalEncoding(nn.Module):
 
         index_matrix = torch.pow(base, index_exponent_matrix)
 
-        pos_encoding = torch.zeros(max_pos, embedding_dim)
+        weights = torch.zeros(max_pos, embedding_dim)
 
-        pos_encoding[:, 0::2] = torch.sin(pos_matrix * index_matrix)
-        pos_encoding[:, 1::2] = torch.cos(pos_matrix * index_matrix)
+        weights[:, 0::2] = torch.sin(pos_matrix * index_matrix)
+        weights[:, 1::2] = torch.cos(pos_matrix * index_matrix)
+
+        self.pos_embedding = nn.Embedding.from_petrained(weights)
 
     def forward(self, input):
+        if len(input) > self.max_pos:
+            raise Exception("size > max_pos")
+
+        positions = torch.arange(len(input))
+
+        self.pos_embedding.forward(positions)
 
 
 class MyDecoderModule(nn.Module):
