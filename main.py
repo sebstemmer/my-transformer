@@ -42,6 +42,7 @@ half_embedding_dim = 8
 embedding_dim = 2 * half_embedding_dim
 vocab_size = len(vocab) + 1
 max_pos = 1024
+base = 10000
 
 
 class PositionalEmbedding(nn.Module):
@@ -50,11 +51,6 @@ class PositionalEmbedding(nn.Module):
 
         pos_matrix = torch.arange(max_pos).view(
             max_pos, -1).repeat(1, half_embedding_dim)
-
-        print("pos_matrix")
-        print(pos_matrix.size())
-
-        base = 10000
 
         index_exponent_matrix = (
             2.0 * torch.arange(half_embedding_dim).repeat(max_pos, 1)) / embedding_dim
@@ -67,6 +63,7 @@ class PositionalEmbedding(nn.Module):
         weights[:, 1::2] = torch.cos(pos_matrix * index_matrix)
 
         self.pos_embedding = nn.Embedding.from_pretrained(weights)
+        self.pos_embedding.weight.requires_grad = False
 
     def forward(self, input):
         if len(input) > max_pos:
@@ -113,6 +110,9 @@ print(encoded)
 
 myDecoderModule = MyDecoderModule()
 
+trainable_params = list(PositionalEmbedding().parameters())
+print([p for p in trainable_params if p.requires_grad])
+
 afterForward = myDecoderModule(encoded)
-print(afterForward)
+# print(afterForward)
 print(afterForward.size())
